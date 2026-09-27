@@ -1,0 +1,89 @@
+name: Test C Compilation on Windows
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-c-lifecycle:
+    runs-on: windows-latest
+
+    steps:
+      # Get hello.c from this repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # Install MSYS2 + GCC on the Windows machine
+      - name: Install MSYS2 and GCC
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: mingw-w64-ucrt-x86_64-gcc
+
+      # Check the environment
+      - name: Check GCC and architecture
+        shell: msys2 {0}
+        run: |
+          gcc --version
+          gcc -dumpmachine
+
+      # STEP 1: Preprocessing
+      - name: 1 - Preprocessing
+        shell: msys2 {0}
+        run: |
+          gcc -E hello.c -o hello.i
+          echo "===== PREPROCESSED OUTPUT: hello.i ====="
+          cat hello.i
+
+      # STEP 2: Compilation
+      - name: 2 - Compilation
+        shell: msys2 {0}
+        run: |
+          gcc -S hello.i -o hello.s
+          echo "===== ASSEMBLY OUTPUT: hello.s ====="
+          cat hello.s
+
+      # STEP 3: Assembly
+      - name: 3 - Assembly
+        shell: msys2 {0}
+        run: |
+          gcc -c hello.s -o hello.o
+          echo "===== OBJECT FILE DISASSEMBLY: hello.o ====="
+          objdump -d hello.o
+          echo "===== OBJECT FILE SYMBOLS ====="
+          nm hello.o
+
+      # STEP 4: Linking
+      - name: 4 - Linking
+        shell: msys2 {0}
+        run: |
+          gcc hello.o -o hello.exe
+          echo "===== EXECUTABLE DISASSEMBLY: hello.exe ====="
+          objdump -d hello.exe
+
+      # Inspect Windows executable
+      - name: Inspect Windows executable
+        shell: msys2 {0}
+        run: |
+          echo "===== PE EXECUTABLE INFORMATION ====="
+          objdump -x hello.exe
+          echo "===== EXECUTABLE CONTENTS ====="
+          objdump -s hello.exe
+
+      # Run the Windows executable
+      - name: 5 - Run executable
+        shell: msys2 {0}
+        run: |
+          echo "===== PROGRAM OUTPUT ====="
+          ./hello.exe
+
+      # Let us download all generated files
+      - name: Save generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-lifecycle-windows-output
+          path: |
+            hello.i
+            hello.s
+            hello.o
+            hello.exe
