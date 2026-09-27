@@ -1,0 +1,92 @@
+name: Test C Compilation on macOS M1
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-c-lifecycle:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Check system and compiler
+        run: |
+          echo "===== SYSTEM ====="
+          uname -a
+          uname -m
+
+          echo "===== COMPILER ====="
+          gcc --version
+
+      # STEP 1: Preprocessing
+      - name: 1 - Preprocessing
+        run: |
+          gcc -E hello.c -o hello.i
+          echo "===== PREPROCESSED OUTPUT ====="
+          cat hello.i
+
+      # STEP 2: Compilation
+      - name: 2 - Compilation
+        run: |
+          gcc -S hello.i -o hello.s
+          echo "===== ASSEMBLY OUTPUT ====="
+          cat hello.s
+
+      # STEP 3: Assembly
+      - name: 3 - Assembly
+        run: |
+          gcc -c hello.s -o hello.o
+
+          echo "===== OBJECT FILE TYPE ====="
+          file hello.o
+
+          echo "===== OBJECT FILE SYMBOLS ====="
+          nm hello.o
+
+          echo "===== OBJECT FILE MACHINE CODE ====="
+          otool -tvV hello.o
+
+      # STEP 4: Linking
+      - name: 4 - Linking
+        run: |
+          gcc hello.o -o hello
+
+          echo "===== EXECUTABLE TYPE ====="
+          file hello
+
+      # Inspect final executable
+      - name: Inspect macOS executable
+        run: |
+          echo "===== MACH-O HEADER ====="
+          otool -hv hello
+
+          echo "===== MACHINE INSTRUCTIONS ====="
+          otool -tvV hello
+
+          echo "===== SYMBOLS ====="
+          nm hello
+
+          echo "===== LINKED LIBRARIES ====="
+          otool -L hello
+
+          echo "===== RAW BYTES ====="
+          xxd hello | head -100
+
+      # Run program
+      - name: 5 - Run executable
+        run: |
+          echo "===== PROGRAM OUTPUT ====="
+          ./hello
+
+      # Download generated files later
+      - name: Save generated files
+        uses: actions/upload-artifact@v4
+        with:
+          name: c-lifecycle-macos-output
+          path: |
+            hello.i
+            hello.s
+            hello.o
+            hello
